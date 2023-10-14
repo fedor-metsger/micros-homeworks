@@ -7,7 +7,7 @@ volumes:
 
 services:
   storage:
-    image: minio/minio:latest
+    image: minio/minio:RELEASE.2023-10-07T15-07-38Z
     container_name: minio
     command: server --console-address :9001 /data
     restart: always
@@ -29,7 +29,7 @@ services:
       retries: 3
 
   createbuckets:
-    image: minio/mc
+    image: minio/mc:RELEASE.2023-10-14T01-57-03Z
     container_name: createbuckets
     depends_on:
       - storage
@@ -71,7 +71,7 @@ services:
       - ./logs:/logs
 
   vector:
-    image: timberio/vector:latest-alpine
+    image: timberio/vector:0.33.0-alpine
     container_name: vector
     depends_on:
       elastic:
@@ -90,7 +90,7 @@ services:
     volumes:
       - ./gateway/nginx.conf:/etc/nginx/nginx.conf:ro
     ports:
-      - "80:80"
+      - 80:80
     depends_on:
       - storage
       - uploader
@@ -137,3 +137,36 @@ services:
       - ELASTICSEARCH_HOSTS=http://elastic:9200
       - ELASTICSEARCH_USERNAME=${Elastic_User:-ELASTIC_USER}
       - ELASTICSEARCH_PASSWORD=${Elastic_Password:-ELASTIC_PASSWORD}
+
+  prometheus:
+    image: prom/prometheus:v2.47.2
+    volumes:
+      - ./prometheus:/etc/prometheus/
+    container_name: prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+    ports:
+      - 9090:9090
+    restart: unless-stopped
+    environment:
+      TZ: "Europe/Moscow"
+
+  grafana:
+    image: grafana/grafana:10.1.5
+    user: root
+    depends_on:
+      - prometheus
+    ports:
+      - 8081:3000
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=“qwerty123456"
+      - GF_SECURITY_ADMIN_USER=“admin”
+      - GF_PATHS_CONFIG=/etc/grafana/grafana.ini
+    volumes:
+      - grafana_data:/var/lib/grafana
+#       - ./grafana/provisioning/:/etc/grafana/provisioning/
+      - ./grafana.ini:/etc/grafana/grafana.ini
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+      TZ: "Europe/Moscow"

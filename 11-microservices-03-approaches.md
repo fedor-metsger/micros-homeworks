@@ -126,9 +126,9 @@ docker compose файл, запустив который можно перейт
 
 ### Решение:
 
-Был обновлён [docker-compose.yaml файл](11-microservices-02-principles/docker-compose.yaml),
+Был обновлён файл [docker-compose.yaml](11-microservices-02-principles/docker-compose.yaml),
 куда были добавлены сервисы **elastic**, **kibana**, **vector**,
-а так же файл конфигурации **vector**: [vector.yaml](11-microservices-02-principles/vector.yaml).
+а так же создан файл конфигурации **vector**: [vector.yaml](11-microservices-02-principles/vector.yaml).
 
 
 ## Задача 5: Мониторинг * (необязательная)
@@ -148,3 +148,12 @@ docker compose файл, запустив который можно перейт
 Логин в Grafana должен быть admin, пароль qwerty123456.
 
 ### Решение:
+
+Был обновлён файл [docker-compose.yaml](11-microservices-02-principles/docker-compose.yaml),
+куда были добавлены сервисы **prometheus**, **grafana**,
+а так же созданы файл конфигурации **prometheus**: [prometheus.yml](11-microservices-02-principles/prometheus/prometheus.yml)
+и файл конфигурации **grafana**: [grafana.ini](11-microservices-02-principles/grafana.ini)
+
+Вывод в интерфейсе в результате настройки:
+
+![](PIC001.png)

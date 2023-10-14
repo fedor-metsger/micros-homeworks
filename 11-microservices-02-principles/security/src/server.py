@@ -19,6 +19,9 @@ data = {
 def status():
     return {'status': 'OK'}
 
+@server.route('/metrics', methods=['GET'])
+def metrics():
+    return 'security_health_status{server="127.0.0.1:3000"} 1'
 
 @server.route('/v1/token', methods=['POST'])
 def login():
