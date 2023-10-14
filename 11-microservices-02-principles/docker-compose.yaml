@@ -1,24 +1,27 @@
 volumes:
-  data:
-  prometheus-data:
+  storage_data:
+  prometheus_data:
   grafana_data:
+  elastic_data:
+  kibana_data:
 
 services:
   storage:
     image: minio/minio:latest
+    container_name: minio
     command: server --console-address :9001 /data
     restart: always
     expose: 
       - 9000
     ports:
-      - 3000:9000
-      - 3001:9001
+      - 9000:9000
+      - 9001:9001
     environment:
       MINIO_ROOT_USER: ${Storage_AccessKey:-STORAGE_ACCESS_KEY}
       MINIO_ROOT_PASSWORD: ${Storage_Secret:-STORAGE_SECRET_KEY}
       MINIO_PROMETHEUS_AUTH_TYPE: public
     volumes:
-      - data:/data
+      - storage_data:/data
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 30s
@@ -27,6 +30,7 @@ services:
 
   createbuckets:
     image: minio/mc
+    container_name: createbuckets
     depends_on:
       - storage
     restart: on-failure
@@ -39,6 +43,7 @@ services:
       "
 
   uploader:
+    container_name: uploader
     build: ./uploader
     depends_on:
       - storage
@@ -54,14 +59,34 @@ services:
       S3_BUCKET: ${Storage_Bucket:-STORAGE_BUCKET}
   
   security:
+    container_name: security
     build: ./security
     expose: 
       - 3000
     environment:
       PORT: 3000
+    entrypoint: >
+      /bin/sh -c "python -u ./server.py"
+    volumes:
+      - ./logs:/logs
+
+  vector:
+    image: timberio/vector:latest-alpine
+    container_name: vector
+    depends_on:
+      elastic:
+        condition: service_healthy
+    ports:
+      - 8686:8686
+    volumes:
+      - ./vector.yaml:/etc/vector/vector.yaml
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      VECTOR_LOG: debug
 
   gateway:
     image: nginx:alpine
+    container_name: nginx
     volumes:
       - ./gateway/nginx.conf:/etc/nginx/nginx.conf:ro
     ports:
@@ -70,3 +95,45 @@ services:
       - storage
       - uploader
       - security
+
+  elastic:
+#    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.2
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.13
+    container_name: elastic
+    restart: always
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=true
+      - ELASTIC_PASSWORD=qwerty123456
+    volumes:
+      - ./certs:/usr/share/elasticsearch/config/certs
+      - elastic_data:/usr/share/elasticsearch/data
+    expose:
+      - 9200
+      - 9300
+    ports:
+      - 9200:9200
+      - 9300:9300
+    healthcheck:
+      test: curl -u ${Elastic_User:-ELASTIC_USER}:${Elastic_Password:-ELASTIC_PASSWORD} -s -f elastic:9200/_cat/health >/dev/null || exit 1
+      interval: 3s
+      timeout: 10s
+      retries: 50
+
+  kibana:
+    depends_on:
+        elastic:
+          condition: service_healthy
+#    image: docker.elastic.co/kibana/kibana:8.10.2
+    image: docker.elastic.co/kibana/kibana:7.17.13
+    container_name: kibana
+    restart: always
+    volumes:
+      - kibana_data:/usr/share/kibana/data
+    ports:
+      - 5601:5601
+    environment:
+      - SERVERNAME=kibana
+      - ELASTICSEARCH_HOSTS=http://elastic:9200
+      - ELASTICSEARCH_USERNAME=${Elastic_User:-ELASTIC_USER}
+      - ELASTICSEARCH_PASSWORD=${Elastic_Password:-ELASTIC_PASSWORD}

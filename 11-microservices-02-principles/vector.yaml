@@ -1,0 +1,25 @@
+
+api:
+  enabled: true
+  address: 127.0.0.1:8686
+
+sources:
+  security:
+    type: "docker_logs"
+    include_containers:
+      - "security"
+      - "uploader"
+      - "minio"
+
+sinks:
+  elastic:
+    type: "elasticsearch"
+    inputs:
+      - "security"
+    endpoints:
+      - "http://elastic:9200"
+    api_version: "v7"
+    auth:
+      strategy: "basic"
+      user: "elastic"
+      password: "qwerty123456"
